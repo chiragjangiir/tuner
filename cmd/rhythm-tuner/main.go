@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,9 @@ import (
 
 // version is set at build time with -ldflags "-X main.version=...".
 var version = "dev"
+
+// commit is set at build time with -ldflags "-X main.commit=...".
+var commit = ""
 
 // Exit codes.
 const (
@@ -46,7 +50,31 @@ func run(args []string, stdout, stderr io.Writer) int {
 		usage(stdout)
 		return exitOK
 	case "-v", "--version", "version":
-		fmt.Fprintln(stdout, "rhythm-tuner", version)
+		for _, a := range args[1:] {
+			if a == "--json" || a == "-json" {
+				doc := struct {
+					Schema  string `json:"schema"`
+					Name    string `json:"name"`
+					Version string `json:"version"`
+					Commit  string `json:"commit"`
+				}{
+					Schema:  "rhythm-version/v1",
+					Name:    "rhythm-tuner",
+					Version: version,
+					Commit:  commit,
+				}
+				if err := json.NewEncoder(stdout).Encode(doc); err != nil {
+					fmt.Fprintln(stderr, err)
+					return exitError
+				}
+				return exitOK
+			}
+		}
+		if commit != "" {
+			fmt.Fprintf(stdout, "rhythm-tuner %s (commit %s)\n", version, commit)
+		} else {
+			fmt.Fprintln(stdout, "rhythm-tuner", version)
+		}
 		return exitOK
 	case "scan", "s":
 		return scan(args[1:], stdout, stderr)

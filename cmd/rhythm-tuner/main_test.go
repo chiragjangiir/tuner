@@ -2239,3 +2239,42 @@ func TestReadmeCoversLaneFeatures(t *testing.T) {
 		}
 	}
 }
+
+func TestVersionJSONAndPlain(t *testing.T) {
+	// Plain text version check
+	code, out, errs := tuner(t, "version")
+	if code != exitOK || !strings.Contains(out, "rhythm-tuner dev") || errs != "" {
+		t.Errorf("version: exit %d, stdout %q, stderr %q", code, out, errs)
+	}
+
+	code, out, errs = tuner(t, "--version")
+	if code != exitOK || !strings.Contains(out, "rhythm-tuner dev") || errs != "" {
+		t.Errorf("--version: exit %d, stdout %q, stderr %q", code, out, errs)
+	}
+
+	// JSON version check
+	code, out, errs = tuner(t, "version", "--json")
+	if code != exitOK || errs != "" {
+		t.Fatalf("version --json: exit %d, stderr %q", code, errs)
+	}
+
+	var doc struct {
+		Schema  string `json:"schema"`
+		Name    string `json:"name"`
+		Version string `json:"version"`
+		Commit  string `json:"commit"`
+	}
+	if err := json.Unmarshal([]byte(out), &doc); err != nil {
+		t.Fatalf("version --json output is not valid JSON: %v\nOutput: %s", err, out)
+	}
+
+	if doc.Schema != "rhythm-version/v1" {
+		t.Errorf("expected schema rhythm-version/v1, got %q", doc.Schema)
+	}
+	if doc.Name != "rhythm-tuner" {
+		t.Errorf("expected name rhythm-tuner, got %q", doc.Name)
+	}
+	if doc.Version != "dev" {
+		t.Errorf("expected version dev, got %q", doc.Version)
+	}
+}
